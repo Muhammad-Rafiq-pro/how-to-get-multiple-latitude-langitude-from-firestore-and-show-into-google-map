@@ -6,8 +6,15 @@ class LayoutBottomSheet extends StatelessWidget {
   final name;
   final address;
   final category;
+  final phone;
+  final http;
   LayoutBottomSheet(
-      {required this.name, required this.address, required this.category});
+      {required this.name,
+      required this.address,
+      required this.category,
+      required this.phone,
+      required this.http
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +60,8 @@ class LayoutBottomSheet extends StatelessWidget {
                       index,
                       word + ((index + 1) % 5 == 0 ? '\n' : ' '),
                     ),
-                  ).values
+                  )
+                  .values
                   .join(),
               maxLines: 2,
               textAlign: TextAlign.center,
@@ -83,7 +91,8 @@ class LayoutBottomSheet extends StatelessWidget {
                       index,
                       word + ((index + 1) % 5 == 0 ? '\n' : ' '),
                     ),
-                  ).values
+                  )
+                  .values
                   .join(),
               maxLines: 2,
               style: largText,
@@ -92,6 +101,54 @@ class LayoutBottomSheet extends StatelessWidget {
           SizedBox(
             height: 10,
           ),
+          Container(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Personal Number:',
+              style: smallText,
+            ),
+          ),
+          Container(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              phone
+                  .split(' ')
+                  .where((element) => (element as String).isNotEmpty)
+                  .toList()
+                  .asMap()
+                  .map(
+                    (index, word) => MapEntry(
+                      index,
+                      word + ((index + 1) % 5 == 0 ? '\n' : ' '),
+                    ),
+                  )
+                  .values
+                  .join(),
+              maxLines: 2,
+              style: largText,
+            ),
+          ),
+          SizedBox(
+            height: 10,
+          ),
+         http != null ? Container(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Website:',
+              style: smallText,
+            ),
+          ):Container(),
+         http != null? Container(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              http ?? "",
+              maxLines: 2,
+              style: largText,
+            ),
+          ):Container(),
+          http != null ?SizedBox(
+            height: 10,
+          ): Container(),
           Container(
             alignment: Alignment.centerLeft,
             child: Text(
@@ -112,7 +169,8 @@ class LayoutBottomSheet extends StatelessWidget {
                       index,
                       word + ((index + 1) % 5 == 0 ? '\n' : ' '),
                     ),
-                  ).values
+                  )
+                  .values
                   .join(),
               maxLines: 4,
               style: largText,

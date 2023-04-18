@@ -44,7 +44,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => MapPicker(),
+            builder: (context) => MapPicker(latLng: "",),
           ),
         );
       },

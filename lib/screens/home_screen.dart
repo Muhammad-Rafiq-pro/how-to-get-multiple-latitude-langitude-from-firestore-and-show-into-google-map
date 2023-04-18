@@ -8,6 +8,8 @@ import 'package:location/location.dart';
 import 'namesearch.dart';
 
 class MapPicker extends StatefulWidget {
+  final latLng;
+  MapPicker({required this.latLng});
   @override
   State<MapPicker> createState() => _MapPickerState();
 }
@@ -74,6 +76,19 @@ class _MapPickerState extends State<MapPicker> {
                   markers: _markers,
                   onMapCreated: (GoogleMapController controller) {
                     _controller = controller;
+                    Marker? targetMarker = _markers.firstWhere(
+                      (marker) =>
+                          marker.position.latitude == widget.latLng.latitude &&
+                          marker.position.longitude == widget.latLng.longitude,
+                    );
+                    _controller!.animateCamera(
+                      CameraUpdate.newCameraPosition(
+                        CameraPosition(
+                          target: targetMarker.position,
+                          zoom: 15,
+                        ),
+                      ),
+                    );
                   },
                 ),
           Positioned(
@@ -129,78 +144,88 @@ class _MapPickerState extends State<MapPicker> {
       ),
     );
   }
-
   void _getMarkersFromFirestore() async {
     FirebaseFirestore firestore = FirebaseFirestore.instance;
     firestore.collection('excel').snapshots().listen(
-      (snapshot) {
+          (snapshot) {
         snapshot.docs.forEach(
-          (doc) async {
+              (doc) async {
             // Check if the document has any data before processing it
             if (doc.exists && doc.data() != null) {
               Map<String, dynamic> data = doc.data();
               // Extract the latitude and longitude values from the document
-              String? latlngStr = data['Longitud/Latitud '];
-              if (latlngStr != null &&
-                  !latlngStr.contains('?') &&
-                  !latlngStr.contains('http')) {
-                List<String> latlngList = latlngStr.split(',');
-                if (latlngList.length == 2) {
-                  double? lat = double.tryParse(latlngList[0].trim());
-                  double? lng = double.tryParse(latlngList[1].trim());
-                  if (lat != null && lng != null) {
-                    LatLng latLng = LatLng(lat, lng);
-                    print("object   $lat");
-                    print(" hello   $lng");
-                    print('object  $latLng');
-                    final imageConfiguration =
-                        ImageConfiguration(size: Size(30, 30));
-                    try {
-                      BitmapDescriptor markerIcon =
-                          await BitmapDescriptor.fromAssetImage(
-                        imageConfiguration,
-                        'assets/images/Vector.png',
-                      );
-                      Marker marker = Marker(
-                        markerId: MarkerId(doc.id),
-                        position: latLng,
-                        icon: markerIcon,
-                        onTap: () {
-                          print("Latitude/Longitude $latLng");
-                          showModalBottomSheet(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return Container(
-                                height: 300,
-                                child: LayoutBottomSheet(
-                                  name: data['Name'] ??
-                                      data["name"] ??
-                                      data["Name (våldtäkt mot barn)"] ??
-                                      '',
-                                  category: data['Category'] ??
-                                      data["category"] ??
-                                      data["Conviction "] ??
-                                      '',
-                                  address: data['Address']?.toString() ??
-                                      data["address"] ??
-                                      data['Adress'] ??
-                                      '',
-                                ),
-                              );
-                            },
-                          );
-                        },
-                        infoWindow: InfoWindow(
-                          title: data['Name'] ?? data["name"] ?? '',
-                          snippet: '', // empty snippet for now
-                        ),
-                      );
-                      setState(() {
-                        _markers.add(marker);
-                      });
-                    } catch (e) {
-                      print('Error loading marker icon: $e');
-                    }
+              String? latlngStr = data['Longitud/Latitud '] ?? data["Convicted yes/no"];
+              List<String> latlngList = latlngStr?.split(',') ?? [];
+              if (latlngList.length == 2) {
+                double? lat = double.tryParse(latlngList[0].trim());
+                double? lng = double.tryParse(latlngList[1].trim());
+                if (lat != null && lng != null) {
+                  LatLng latLng = LatLng(lat, lng);
+                  print('object  $latLng');
+                  final imageConfiguration =
+                  ImageConfiguration(size: Size(30, 30));
+                  try {
+                    BitmapDescriptor markerIcon =
+                    await BitmapDescriptor.fromAssetImage(
+                      imageConfiguration,
+                      'assets/images/Vector.png',
+                    );
+                    Marker marker = Marker(
+                      markerId: MarkerId(doc.id),
+                      position: latLng,
+                      icon: markerIcon,
+                      onTap: () {
+                        String? latlngHttp = data['Longitud/Latitud '];
+                        RegExp exp = RegExp(r'(https?:\/\/[^\s]+)');
+                        String? http;
+                        if (latlngHttp != null) {
+                          Iterable<RegExpMatch> matches =
+                          exp.allMatches(latlngHttp);
+                          http = matches
+                              .map((match) => match.group(0))
+                              .firstWhere(
+                                  (link) => link!.contains('https'),
+                              orElse: () => null);
+                        }
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return Container(
+                              height: 380,
+                              child: LayoutBottomSheet(
+
+                                name: data['Name'] ??
+                                    data["name"] ??
+                                    data["Name (våldtäkt mot barn)"] ??
+                                    '',
+                                category: data['Category'] ??
+                                    data["category"] ??
+                                    data["Conviction "] ??
+                                    '',
+                                address: data['Address']?.toString() ??
+                                    data["address"] ??
+                                    data['Adress'] ??
+                                    '',
+                                phone:
+                                data['Personnummer: (NY) ']?.toString() ??
+                                    data["Personnummer: (NY) "] ??
+                                    '',
+                                  http:http,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      infoWindow: InfoWindow(
+                        title: data['Name'] ?? data["name"] ?? '',
+                        snippet: '', // empty snippet for now
+                      ),
+                    );
+                    setState(() {
+                      _markers.add(marker);
+                    });
+                  } catch (e) {
+                    print('Error loading marker icon: $e');
                   }
                 }
               }
@@ -210,6 +235,92 @@ class _MapPickerState extends State<MapPicker> {
       },
     );
   }
+  // void _getMarkersFromFirestore() async {
+  //   FirebaseFirestore firestore = FirebaseFirestore.instance;
+  //   firestore.collection('excel').snapshots().listen(
+  //     (snapshot) {
+  //       snapshot.docs.forEach(
+  //         (doc) async {
+  //           // Check if the document has any data before processing it
+  //           if (doc.exists && doc.data() != null) {
+  //             Map<String, dynamic> data = doc.data();
+  //             // Extract the latitude and longitude values from the document
+  //             String? latlngStr = data['Longitud/Latitud '];
+  //             if (latlngStr != null &&
+  //                 !latlngStr.contains('?') &&
+  //                 !latlngStr.contains('http')) {
+  //               List<String> latlngList = latlngStr.split(',');
+  //               if (latlngList.length == 2) {
+  //                 double? lat = double.tryParse(latlngList[0].trim());
+  //                 double? lng = double.tryParse(latlngList[1].trim());
+  //                 if (lat != null && lng != null) {
+  //                   LatLng latLng = LatLng(lat, lng);
+  //                   print('object  $latLng');
+  //                   final imageConfiguration =
+  //                       ImageConfiguration(size: Size(30, 30));
+  //                   try {
+  //                     BitmapDescriptor markerIcon =
+  //                         await BitmapDescriptor.fromAssetImage(
+  //                       imageConfiguration,
+  //                       'assets/images/Vector.png',
+  //                     );
+  //                     Marker marker = Marker(
+  //                       markerId: MarkerId(doc.id),
+  //                       position: latLng,
+  //                       icon: markerIcon,
+  //                       onTap: () {
+  //                         String? latlngStr = data['Longitud/Latitud '];
+  //                         showModalBottomSheet(
+  //                           context: context,
+  //                           builder: (BuildContext context) {
+  //                             return Container(
+  //                               height: 400,
+  //                               child: LayoutBottomSheet(
+  //                                 name: data['Name'] ??
+  //                                     data["name"] ??
+  //                                     data["Name (våldtäkt mot barn)"] ??
+  //                                     '',
+  //                                 category: data['Category'] ??
+  //                                     data["category"] ??
+  //                                     data["Conviction "] ??
+  //                                     '',
+  //                                 address: data['Address']?.toString() ??
+  //                                     data["address"] ??
+  //                                     data['Adress'] ??
+  //                                     '',
+  //                                 phone:
+  //                                     data['Personnummer: (NY) ']?.toString() ??
+  //                                         data["Personnummer: (NY) "] ??
+  //                                         '',
+  //                                 link: latlngStr?.contains('http') ?? false ? data['Longitud/Latitud '] : "",
+  //                                 // link: latlngStr == latlngStr?.contains('http')
+  //                                 //     ? data['Longitud/Latitud ']
+  //                                 //     : "",
+  //                               ),
+  //                             );
+  //                           },
+  //                         );
+  //                       },
+  //                       infoWindow: InfoWindow(
+  //                         title: data['Name'] ?? data["name"] ?? '',
+  //                         snippet: '', // empty snippet for now
+  //                       ),
+  //                     );
+  //                     setState(() {
+  //                       _markers.add(marker);
+  //                     });
+  //                   } catch (e) {
+  //                     print('Error loading marker icon: $e');
+  //                   }
+  //                 }
+  //               }
+  //             }
+  //           }
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
 }
 
 // void _getMarkersFromFirestore() async {
